@@ -18,6 +18,7 @@ from utils.tools import (
     get_result_file_content,
     process_nested_dict,
     format_interval,
+    check_ipv6_support,
 )
 from updates.subscribe import get_channels_by_subscribe_urls
 from updates.multicast import get_channels_by_multicast
@@ -129,7 +130,7 @@ class UpdateSource:
     def get_urls_len(self, filter=False):
         data = copy.deepcopy(self.channel_data)
         if filter:
-            process_nested_dict(data, seen=set(), flag="$cache:")
+            process_nested_dict(data, seen=set(), flag=r"cache:(.*)")
         processed_urls = set(
             url_info[0]
             for channel_obj in data.values()
@@ -161,6 +162,7 @@ class UpdateSource:
             )
             urls_total = self.get_urls_len()
             channel_data_cache = copy.deepcopy(self.channel_data)
+            ipv6_support = check_ipv6_support()
             open_sort = config.getboolean("Settings", "open_sort", fallback=True)
             if open_sort:
                 self.total = self.get_urls_len(filter=True)
@@ -174,6 +176,7 @@ class UpdateSource:
                 self.pbar = tqdm_asyncio(total=self.total, desc="Sorting")
                 self.channel_data = await process_sort_channel_list(
                     self.channel_data,
+                    ipv6=ipv6_support,
                     callback=sort_callback,
                 )
             else:
@@ -184,6 +187,7 @@ class UpdateSource:
             write_channel_to_file(
                 channel_items_obj_items,
                 self.channel_data,
+                ipv6=ipv6_support,
                 callback=lambda: self.pbar_update(name="写入结果"),
             )
             self.pbar.close()
